@@ -1,0 +1,31 @@
+@startuml
+title Sealed LoanResult Hierarchy
+
+interface LoanResult <<sealed>>
+record "Success" as Success
+record "InsufficientCopies" as InsufficientCopies
+record "MemberSuspended" as MemberSuspended
+record "FineExceeded" as FineExceeded
+class Loan
+class Book
+class Member
+
+LoanResult <|.. Success
+LoanResult <|.. InsufficientCopies
+LoanResult <|.. MemberSuspended
+LoanResult <|.. FineExceeded
+
+Success --> Loan
+InsufficientCopies --> Book
+MemberSuspended --> Member
+FineExceeded --> Member
+
+note right of LoanResult
+Closed outcome set for borrowing:
+- success
+- not enough copies
+- member suspended
+- fine threshold exceeded
+end note
+
+@enduml

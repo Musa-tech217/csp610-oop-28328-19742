@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LoanBuilder.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">csp610-oop-smartlib</a> &gt; <a href="index.source.html" class="el_package">smartlib.patterns.creational</a> &gt; <span class="el_source">LoanBuilder.java</span></div><h1>LoanBuilder.java</h1><pre class="source lang-java linenums">package smartlib.patterns.creational;
+// Quick note: this file is here to show the pattern idea without mixing in too much else.
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
+import smartlib.domain.Book;
+import smartlib.domain.BorrowingPolicy;
+import smartlib.domain.BorrowingPolicyRegistry;
+import smartlib.domain.Loan;
+import smartlib.domain.Member;
+import smartlib.domain.PremiumPolicy;
+import smartlib.domain.StandardPolicy;
+import smartlib.domain.StudentPolicy;
+
+/**
+ * Builder for constructing immutable {@link Loan} instances without telescoping constructors.
+ */
+public final class LoanBuilder {
+
+<span class="fc" id="L22">    private static final BorrowingPolicyRegistry DEFAULT_POLICIES = new BorrowingPolicyRegistry(List.of(</span>
+            new StandardPolicy(),
+            new PremiumPolicy(),
+            new StudentPolicy()));
+
+    private final Member member;
+    private final Book book;
+    private final BorrowingPolicyRegistry policyRegistry;
+<span class="fc" id="L30">    private String notes = &quot;&quot;;</span>
+    private int renewalCount;
+    private String referenceCode;
+<span class="fc" id="L33">    private LocalDate borrowedOn = LocalDate.now();</span>
+    private String loanId;
+
+<span class="fc" id="L36">    private LoanBuilder(Member member, Book book, BorrowingPolicyRegistry policyRegistry) {</span>
+<span class="fc" id="L37">        this.member = Objects.requireNonNull(member, &quot;member must not be null&quot;);</span>
+<span class="fc" id="L38">        this.book = Objects.requireNonNull(book, &quot;book must not be null&quot;);</span>
+<span class="fc" id="L39">        this.policyRegistry = Objects.requireNonNull(policyRegistry, &quot;policyRegistry must not be null&quot;);</span>
+<span class="fc" id="L40">    }</span>
+
+    public static LoanBuilder forMemberAndBook(Member member, Book book) {
+<span class="fc" id="L43">        return new LoanBuilder(member, book, DEFAULT_POLICIES);</span>
+    }
+
+    public static LoanBuilder forMemberAndBook(Member member, Book book, BorrowingPolicyRegistry policyRegistry) {
+<span class="nc" id="L47">        return new LoanBuilder(member, book, policyRegistry);</span>
+    }
+
+    public LoanBuilder notes(String notes) {
+<span class="pc bpc" id="L51" title="1 of 2 branches missed.">        this.notes = notes == null ? &quot;&quot; : notes;</span>
+<span class="fc" id="L52">        return this;</span>
+    }
+
+    public LoanBuilder renewalCount(int renewalCount) {
+<span class="fc bfc" id="L56" title="All 2 branches covered.">        if (renewalCount &lt; 0) {</span>
+<span class="fc" id="L57">            throw new IllegalArgumentException(&quot;renewalCount must be zero or greater&quot;);</span>
+        }
+<span class="fc" id="L59">        this.renewalCount = renewalCount;</span>
+<span class="fc" id="L60">        return this;</span>
+    }
+
+    public LoanBuilder referenceCode(String referenceCode) {
+<span class="fc" id="L64">        this.referenceCode = referenceCode;</span>
+<span class="fc" id="L65">        return this;</span>
+    }
+
+    public LoanBuilder borrowedOn(LocalDate borrowedOn) {
+<span class="fc" id="L69">        this.borrowedOn = Objects.requireNonNull(borrowedOn, &quot;borrowedOn must not be null&quot;);</span>
+<span class="fc" id="L70">        return this;</span>
+    }
+
+    public LoanBuilder loanId(String loanId) {
+<span class="fc" id="L74">        this.loanId = loanId;</span>
+<span class="fc" id="L75">        return this;</span>
+    }
+
+    public Loan build() {
+<span class="fc" id="L79">        validate();</span>
+<span class="fc" id="L80">        BorrowingPolicy policy = policyRegistry.getPolicyFor(member.membershipType());</span>
+<span class="pc bpc" id="L81" title="1 of 4 branches missed.">        String resolvedLoanId = loanId == null || loanId.isBlank() ? UUID.randomUUID().toString() : loanId;</span>
+<span class="pc bpc" id="L82" title="1 of 4 branches missed.">        String resolvedReferenceCode = referenceCode == null || referenceCode.isBlank()</span>
+<span class="fc" id="L83">                ? member.id() + &quot;-&quot; + book.id()</span>
+<span class="fc" id="L84">                : referenceCode;</span>
+
+<span class="fc" id="L86">        return Loan.open(</span>
+                resolvedLoanId,
+<span class="fc" id="L88">                book.id(),</span>
+<span class="fc" id="L89">                member.id(),</span>
+                borrowedOn,
+<span class="fc" id="L91">                policy.loanPeriodDays(),</span>
+                notes,
+                renewalCount,
+                resolvedReferenceCode);
+    }
+
+    private void validate() {
+<span class="pc bpc" id="L98" title="1 of 2 branches missed.">        if (!book.isAvailableForBorrow()) {</span>
+<span class="nc" id="L99">            throw new IllegalStateException(&quot;Cannot build a loan for an unavailable book&quot;);</span>
+        }
+<span class="fc" id="L101">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LoanSummaryCollector.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">csp610-oop-smartlib</a> &gt; <a href="index.source.html" class="el_package">smartlib.functional</a> &gt; <span class="el_source">LoanSummaryCollector.java</span></div><h1>LoanSummaryCollector.java</h1><pre class="source lang-java linenums">package smartlib.functional;
+// Quick note: this part reads better to me as a stream pipeline than a loop.
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.EnumMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.stream.Collector;
+import smartlib.domain.Loan;
+import smartlib.domain.Member;
+import smartlib.domain.MembershipType;
+
+/**
+ * Custom collector that summarises loans using mutable accumulation and an immutable final result.
+ */
+public final class LoanSummaryCollector implements Collector&lt;Loan, LoanSummaryCollector.MutableLoanSummary, LoanSummary&gt; {
+
+    private final Function&lt;? super Loan, ? extends Member&gt; memberResolver;
+    private final Function&lt;? super Loan, BigDecimal&gt; outstandingFineResolver;
+
+    public LoanSummaryCollector(
+            Function&lt;? super Loan, ? extends Member&gt; memberResolver,
+<span class="fc" id="L26">            Function&lt;? super Loan, BigDecimal&gt; outstandingFineResolver) {</span>
+<span class="fc" id="L27">        this.memberResolver = memberResolver;</span>
+<span class="fc" id="L28">        this.outstandingFineResolver = outstandingFineResolver;</span>
+<span class="fc" id="L29">    }</span>
+
+    @Override
+    public Supplier&lt;MutableLoanSummary&gt; supplier() {
+<span class="fc" id="L33">        return MutableLoanSummary::new;</span>
+    }
+
+    @Override
+    public java.util.function.BiConsumer&lt;MutableLoanSummary, Loan&gt; accumulator() {
+<span class="fc" id="L38">        return (summary, loan) -&gt; {</span>
+<span class="fc" id="L39">            summary.totalLoanCount++;</span>
+<span class="fc" id="L40">            summary.totalOutstandingFines = summary.totalOutstandingFines.add(outstandingFineResolver.apply(loan));</span>
+<span class="fc bfc" id="L41" title="All 2 branches covered.">            summary.latestLoanDate = summary.latestLoanDate == null</span>
+<span class="fc" id="L42">                    ? loan.borrowedOn()</span>
+<span class="pc bpc" id="L43" title="1 of 2 branches missed.">                    : summary.latestLoanDate.isAfter(loan.borrowedOn()) ? summary.latestLoanDate : loan.borrowedOn();</span>
+<span class="fc" id="L44">            MembershipType membershipType = memberResolver.apply(loan).membershipType();</span>
+<span class="fc" id="L45">            summary.membershipBreakdown.merge(membershipType, 1L, Long::sum);</span>
+<span class="fc" id="L46">        };</span>
+    }
+
+    @Override
+    public java.util.function.BinaryOperator&lt;MutableLoanSummary&gt; combiner() {
+<span class="fc" id="L51">        return (left, right) -&gt; {</span>
+<span class="fc" id="L52">            left.totalLoanCount += right.totalLoanCount;</span>
+<span class="fc" id="L53">            left.totalOutstandingFines = left.totalOutstandingFines.add(right.totalOutstandingFines);</span>
+<span class="pc bpc" id="L54" title="3 of 6 branches missed.">            if (left.latestLoanDate == null || (right.latestLoanDate != null &amp;&amp; right.latestLoanDate.isAfter(left.latestLoanDate))) {</span>
+<span class="fc" id="L55">                left.latestLoanDate = right.latestLoanDate;</span>
+            }
+<span class="fc" id="L57">            right.membershipBreakdown.forEach((type, count) -&gt; left.membershipBreakdown.merge(type, count, Long::sum));</span>
+<span class="fc" id="L58">            return left;</span>
+        };
+    }
+
+    @Override
+    public java.util.function.Function&lt;MutableLoanSummary, LoanSummary&gt; finisher() {
+<span class="fc" id="L64">        return summary -&gt; new LoanSummary(</span>
+                summary.totalLoanCount,
+                summary.totalOutstandingFines,
+                summary.latestLoanDate,
+<span class="fc" id="L68">                Map.copyOf(summary.membershipBreakdown));</span>
+    }
+
+    @Override
+    public Set&lt;Characteristics&gt; characteristics() {
+<span class="fc" id="L73">        return Set.of(Characteristics.UNORDERED);</span>
+    }
+
+<span class="fc" id="L76">    static final class MutableLoanSummary {</span>
+
+        private long totalLoanCount;
+<span class="fc" id="L79">        private BigDecimal totalOutstandingFines = BigDecimal.ZERO;</span>
+        private LocalDate latestLoanDate;
+<span class="fc" id="L81">        private final Map&lt;MembershipType, Long&gt; membershipBreakdown = new EnumMap&lt;&gt;(MembershipType.class);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MethodReferenceExamples.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">csp610-oop-smartlib</a> &gt; <a href="index.source.html" class="el_package">smartlib.functional</a> &gt; <span class="el_source">MethodReferenceExamples.java</span></div><h1>MethodReferenceExamples.java</h1><pre class="source lang-java linenums">package smartlib.functional;
+// Quick note: this part reads better to me as a stream pipeline than a loop.
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Objects;
+import java.util.function.Function;
+import smartlib.domain.Book;
+import smartlib.domain.Member;
+import smartlib.domain.Notification;
+import smartlib.domain.NotificationChannel;
+
+/**
+ * Small examples of the four method reference forms.
+ */
+public final class MethodReferenceExamples {
+
+    private MethodReferenceExamples() {
+    }
+
+    public static List&lt;String&gt; normalisedTitles(List&lt;Book&gt; books) {
+<span class="fc" id="L22">        return books.stream()</span>
+<span class="fc" id="L23">                .map(Book::title)</span>
+<span class="fc" id="L24">                .map(MethodReferenceExamples::normaliseTitle)</span>
+<span class="fc" id="L25">                .toList();</span>
+    }
+
+    public static List&lt;String&gt; authorNames(List&lt;Book&gt; books) {
+<span class="fc" id="L29">        return books.stream()</span>
+<span class="fc" id="L30">                .map(Book::author)</span>
+<span class="fc" id="L31">                .toList();</span>
+    }
+
+    public static List&lt;String&gt; greetingsForMembers(List&lt;Member&gt; members, String prefix) {
+<span class="fc" id="L35">        PrefixFormatter formatter = new PrefixFormatter(prefix);</span>
+<span class="fc" id="L36">        return members.stream()</span>
+<span class="fc" id="L37">                .map(Member::name)</span>
+<span class="fc" id="L38">                .map(formatter::format)</span>
+<span class="fc" id="L39">                .toList();</span>
+    }
+
+    public static List&lt;MemberNotification&gt; notificationTargets(List&lt;Member&gt; members) {
+<span class="fc" id="L43">        return members.stream()</span>
+<span class="fc" id="L44">                .map(MemberNotification::new)</span>
+<span class="fc" id="L45">                .toList();</span>
+    }
+
+    public static Notification notificationFor(Member member, String subject, String message) {
+<span class="nc" id="L49">        Objects.requireNonNull(member, &quot;member must not be null&quot;);</span>
+<span class="nc" id="L50">        return new Notification(</span>
+<span class="nc" id="L51">                &quot;notification-&quot; + member.id(),</span>
+<span class="nc" id="L52">                member.id(),</span>
+<span class="nc" id="L53">                member.notificationAddress(),</span>
+                NotificationChannel.EMAIL,
+                subject,
+                message,
+<span class="nc" id="L57">                LocalDateTime.now());</span>
+    }
+
+    static String normaliseTitle(String title) {
+<span class="fc" id="L61">        return title.trim().replaceAll(&quot;\\s+&quot;, &quot; &quot;);</span>
+    }
+
+<span class="fc" id="L64">    private record PrefixFormatter(String prefix) {</span>
+        String format(String value) {
+<span class="fc" id="L66">            return prefix + value;</span>
+        }
+    }
+
+<span class="fc" id="L70">    public record MemberNotification(String recipient, String memberName) {</span>
+        public MemberNotification(Member member) {
+<span class="fc" id="L72">            this(member.notificationAddress(), member.name());</span>
+<span class="fc" id="L73">        }</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

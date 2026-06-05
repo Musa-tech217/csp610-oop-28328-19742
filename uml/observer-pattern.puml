@@ -1,0 +1,29 @@
+@startuml
+title SmartLib Observer Pattern
+
+interface LibraryEventListener {
+  +onEvent(event)
+}
+
+class LibraryEventBus {
+  +subscribe(listener)
+  +unsubscribe(listener)
+  +publish(event)
+}
+
+class LibraryEvent
+enum EventType
+class OverdueFineListener
+class MemberNotificationListener
+class AuditLogListener
+
+LibraryEventBus o--> LibraryEventListener : manages
+LibraryEvent --> EventType
+LibraryEventListener <|.. OverdueFineListener
+LibraryEventListener <|.. MemberNotificationListener
+LibraryEventListener <|.. AuditLogListener
+OverdueFineListener --> LibraryEventBus : publishes FINE_IMPOSED
+MemberNotificationListener --> "NotificationSender" : uses
+AuditLogListener --> LibraryEvent : stores history
+
+@enduml

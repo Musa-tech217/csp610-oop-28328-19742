@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: smartlib.concurrent.ConcurrencyExamplesTest
+-------------------------------------------------------------------------------
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.451 s -- in smartlib.concurrent.ConcurrencyExamplesTest

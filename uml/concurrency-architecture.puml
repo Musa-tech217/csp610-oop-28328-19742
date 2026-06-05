@@ -1,0 +1,40 @@
+@startuml
+title SmartLib Concurrency Architecture
+
+class BookReturnProcessor
+class ReturnResult
+class InventoryManager
+class "ExecutorService\n(fixed thread pool)" as ExecutorService
+class CompletableFuture
+class AtomicInteger
+class ReentrantLock
+class ReentrantReadWriteLock
+class Condition
+class LibraryEventBus
+class NotificationSender
+class FineCalculator
+class Repository
+
+BookReturnProcessor --> ExecutorService : schedules stages
+BookReturnProcessor --> CompletableFuture : composes pipeline
+BookReturnProcessor --> AtomicInteger : processed/failed counters
+BookReturnProcessor --> ReentrantLock : guards atomic state update
+BookReturnProcessor --> Repository : loan/book/member/fine
+BookReturnProcessor --> FineCalculator
+BookReturnProcessor --> NotificationSender
+BookReturnProcessor --> LibraryEventBus
+BookReturnProcessor --> ReturnResult
+
+InventoryManager --> ReentrantReadWriteLock : read/write coordination
+InventoryManager --> Condition : waits for copies
+
+note right of BookReturnProcessor
+Pipeline:
+1. validate return
+2. locked state update
+3. notify
+4. publish event
+5. increment counters
+end note
+
+@enduml

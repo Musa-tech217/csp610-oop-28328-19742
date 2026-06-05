@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MembershipPolicyFactory.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">csp610-oop-smartlib</a> &gt; <a href="index.source.html" class="el_package">smartlib.modern</a> &gt; <span class="el_source">MembershipPolicyFactory.java</span></div><h1>MembershipPolicyFactory.java</h1><pre class="source lang-java linenums">package smartlib.modern;
+// Quick note: I used the newer Java feature here because it made the intent clearer.
+
+import java.util.Objects;
+import smartlib.domain.BorrowingPolicy;
+import smartlib.domain.MembershipType;
+import smartlib.domain.PremiumPolicy;
+import smartlib.domain.StandardPolicy;
+import smartlib.domain.StudentPolicy;
+
+/**
+ * Switch-expression based factory for membership borrowing policies.
+ */
+<span class="fc" id="L14">public final class MembershipPolicyFactory {</span>
+
+<span class="fc" id="L16">    private static final MembershipPolicyFactory DEFAULT = new MembershipPolicyFactory();</span>
+
+    public static MembershipPolicyFactory defaultFactory() {
+<span class="fc" id="L19">        return DEFAULT;</span>
+    }
+
+    public BorrowingPolicy create(MembershipType membershipType) {
+<span class="fc" id="L23">        Objects.requireNonNull(membershipType, &quot;membershipType must not be null&quot;);</span>
+<span class="fc bfc" id="L24" title="All 3 branches covered.">        return switch (membershipType) {</span>
+<span class="fc" id="L25">            case STANDARD -&gt; new StandardPolicy();</span>
+<span class="fc" id="L26">            case PREMIUM -&gt; new PremiumPolicy();</span>
+<span class="fc" id="L27">            case STUDENT -&gt; new StudentPolicy();</span>
+        };
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

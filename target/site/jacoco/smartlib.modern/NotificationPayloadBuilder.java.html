@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>NotificationPayloadBuilder.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">csp610-oop-smartlib</a> &gt; <a href="index.source.html" class="el_package">smartlib.modern</a> &gt; <span class="el_source">NotificationPayloadBuilder.java</span></div><h1>NotificationPayloadBuilder.java</h1><pre class="source lang-java linenums">package smartlib.modern;
+// Quick note: I used the newer Java feature here because it made the intent clearer.
+
+import java.time.LocalDateTime;
+import java.util.Objects;
+import smartlib.domain.Member;
+import smartlib.domain.NotificationChannel;
+
+/**
+ * Builds JSON notification payloads using text blocks.
+ */
+<span class="fc" id="L12">public final class NotificationPayloadBuilder {</span>
+
+    public String build(Member member, NotificationChannel channel, String message, LocalDateTime timestamp) {
+<span class="fc" id="L15">        Objects.requireNonNull(member, &quot;member must not be null&quot;);</span>
+<span class="fc" id="L16">        Objects.requireNonNull(channel, &quot;channel must not be null&quot;);</span>
+<span class="fc" id="L17">        Objects.requireNonNull(message, &quot;message must not be null&quot;);</span>
+<span class="fc" id="L18">        Objects.requireNonNull(timestamp, &quot;timestamp must not be null&quot;);</span>
+
+<span class="fc" id="L20">        return &quot;&quot;&quot;</span>
+                {
+                  &quot;recipientId&quot;: &quot;%s&quot;,
+                  &quot;recipientEmail&quot;: &quot;%s&quot;,
+                  &quot;channel&quot;: &quot;%s&quot;,
+                  &quot;message&quot;: &quot;%s&quot;,
+                  &quot;timestamp&quot;: &quot;%s&quot;
+                }
+<span class="fc" id="L28">                &quot;&quot;&quot;.formatted(</span>
+<span class="fc" id="L29">                escape(member.id()),</span>
+<span class="fc" id="L30">                escape(member.notificationAddress()),</span>
+<span class="fc" id="L31">                escape(channel.name()),</span>
+<span class="fc" id="L32">                escape(message),</span>
+<span class="fc" id="L33">                escape(timestamp.toString()));</span>
+    }
+
+    private String escape(String value) {
+<span class="fc" id="L37">        return value.replace(&quot;\\&quot;, &quot;\\\\&quot;).replace(&quot;\&quot;&quot;, &quot;\\\&quot;&quot;);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

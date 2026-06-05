@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LoanResultHandler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">csp610-oop-smartlib</a> &gt; <a href="index.source.html" class="el_package">smartlib.modern</a> &gt; <span class="el_source">LoanResultHandler.java</span></div><h1>LoanResultHandler.java</h1><pre class="source lang-java linenums">package smartlib.modern;
+// Quick note: I used the newer Java feature here because it made the intent clearer.
+
+import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
+import java.util.function.Consumer;
+import smartlib.domain.Loan;
+import smartlib.domain.Member;
+import smartlib.domain.Notification;
+import smartlib.domain.NotificationSender;
+import smartlib.domain.Repository;
+import smartlib.domain.Reservation;
+import smartlib.patterns.behavioural.EventType;
+import smartlib.patterns.behavioural.LibraryEvent;
+import smartlib.patterns.behavioural.LibraryEventBus;
+
+/**
+ * Handles each sealed loan result variant with an exhaustive pattern-matching switch.
+ */
+public final class LoanResultHandler {
+
+    private final Repository&lt;Reservation, String&gt; reservationRepository;
+    private final NotificationSender notificationSender;
+    private final LibraryEventBus eventBus;
+    private final Clock clock;
+    private final Consumer&lt;String&gt; logger;
+
+    public LoanResultHandler(
+            Repository&lt;Reservation, String&gt; reservationRepository,
+            NotificationSender notificationSender,
+            LibraryEventBus eventBus,
+            Clock clock,
+<span class="fc" id="L38">            Consumer&lt;String&gt; logger) {</span>
+<span class="fc" id="L39">        this.reservationRepository = Objects.requireNonNull(reservationRepository, &quot;reservationRepository must not be null&quot;);</span>
+<span class="fc" id="L40">        this.notificationSender = Objects.requireNonNull(notificationSender, &quot;notificationSender must not be null&quot;);</span>
+<span class="fc" id="L41">        this.eventBus = Objects.requireNonNull(eventBus, &quot;eventBus must not be null&quot;);</span>
+<span class="fc" id="L42">        this.clock = Objects.requireNonNull(clock, &quot;clock must not be null&quot;);</span>
+<span class="fc" id="L43">        this.logger = Objects.requireNonNull(logger, &quot;logger must not be null&quot;);</span>
+<span class="fc" id="L44">    }</span>
+
+    public String handle(LoanResult result, Member requester) {
+<span class="fc" id="L47">        Objects.requireNonNull(result, &quot;result must not be null&quot;);</span>
+<span class="fc bfc" id="L48" title="All 4 branches covered.">        return switch (result) {</span>
+<span class="fc" id="L49">            case LoanResult.Success success -&gt; handleSuccess(success.loan());</span>
+<span class="fc" id="L50">            case LoanResult.InsufficientCopies insufficientCopies -&gt; handleInsufficientCopies(insufficientCopies, requester);</span>
+<span class="fc" id="L51">            case LoanResult.MemberSuspended memberSuspended -&gt; handleMemberSuspended(memberSuspended);</span>
+<span class="fc" id="L52">            case LoanResult.FineExceeded fineExceeded -&gt; handleFineExceeded(fineExceeded);</span>
+        };
+    }
+
+    private String handleSuccess(Loan loan) {
+<span class="fc" id="L57">        logger.accept(&quot;Loan created successfully for &quot; + loan.memberId() + &quot; on &quot; + loan.bookId());</span>
+<span class="fc" id="L58">        eventBus.publish(LibraryEvent.of(</span>
+                EventType.BOOK_BORROWED,
+<span class="fc" id="L60">                Map.of(&quot;loan&quot;, loan, &quot;memberId&quot;, loan.memberId(), &quot;bookId&quot;, loan.bookId())));</span>
+<span class="fc" id="L61">        return &quot;Borrow succeeded&quot;;</span>
+    }
+
+    private String handleInsufficientCopies(LoanResult.InsufficientCopies insufficientCopies, Member requester) {
+<span class="fc" id="L65">        Objects.requireNonNull(requester, &quot;requester must not be null for insufficient copies&quot;);</span>
+<span class="fc" id="L66">        Reservation reservation = Reservation.create(</span>
+<span class="fc" id="L67">                UUID.randomUUID().toString(),</span>
+<span class="fc" id="L68">                insufficientCopies.book().id(),</span>
+<span class="fc" id="L69">                requester.id(),</span>
+<span class="fc" id="L70">                LocalDate.now(clock));</span>
+<span class="fc" id="L71">        reservationRepository.save(reservation);</span>
+<span class="fc" id="L72">        notificationSender.send(new Notification(</span>
+<span class="fc" id="L73">                UUID.randomUUID().toString(),</span>
+<span class="fc" id="L74">                requester.id(),</span>
+<span class="fc" id="L75">                requester.notificationAddress(),</span>
+<span class="fc" id="L76">                requester.preferredChannel(),</span>
+                &quot;Reservation created&quot;,
+                &quot;&quot;&quot;
+                We could not complete your borrowing request.
+                A reservation has been created for %s.
+                Requested copies: %d
+                Available copies: %d
+<span class="fc" id="L83">                &quot;&quot;&quot;.formatted(insufficientCopies.book().title(), insufficientCopies.requested(), insufficientCopies.available()).trim(),</span>
+<span class="fc" id="L84">                LocalDateTime.now(clock)));</span>
+<span class="fc" id="L85">        return &quot;Reservation created&quot;;</span>
+    }
+
+    private String handleMemberSuspended(LoanResult.MemberSuspended memberSuspended) {
+<span class="fc" id="L89">        logger.accept(&quot;WARNING: member %s is suspended. Reason: %s&quot;</span>
+<span class="fc" id="L90">                .formatted(memberSuspended.member().id(), memberSuspended.reason()));</span>
+<span class="fc" id="L91">        return &quot;Member suspended&quot;;</span>
+    }
+
+    private String handleFineExceeded(LoanResult.FineExceeded fineExceeded) {
+<span class="fc" id="L95">        notificationSender.send(new Notification(</span>
+<span class="fc" id="L96">                UUID.randomUUID().toString(),</span>
+<span class="fc" id="L97">                fineExceeded.member().id(),</span>
+<span class="fc" id="L98">                fineExceeded.member().notificationAddress(),</span>
+<span class="fc" id="L99">                fineExceeded.member().preferredChannel(),</span>
+                &quot;Payment reminder&quot;,
+                &quot;&quot;&quot;
+                Your outstanding fine is above the borrowing threshold.
+                Outstanding fine: $%s
+                Threshold: $%s
+                Please make a payment to continue borrowing.
+<span class="fc" id="L106">                &quot;&quot;&quot;.formatted(fineExceeded.outstandingFine(), fineExceeded.threshold()).trim(),</span>
+<span class="fc" id="L107">                LocalDateTime.now(clock)));</span>
+<span class="fc" id="L108">        return &quot;Payment reminder sent&quot;;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

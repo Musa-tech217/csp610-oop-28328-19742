@@ -1,0 +1,55 @@
+@startuml
+title SmartLib Domain Model
+
+interface Borrowable
+interface BorrowingPolicy
+interface LoanService
+interface Repository<T, ID>
+interface Notifiable
+
+enum MembershipType
+enum LoanStatus
+enum ReservationStatus
+enum NotificationChannel
+
+class Book
+class Member
+class Loan
+class Reservation
+class Fine
+class Notification
+class BorrowingPolicyRegistry
+class StandardPolicy
+class PremiumPolicy
+class StudentPolicy
+class DefaultLoanService
+class DefaultFineCalculator
+
+Borrowable <|.. Book
+Notifiable <|.. Member
+BorrowingPolicy <|.. StandardPolicy
+BorrowingPolicy <|.. PremiumPolicy
+BorrowingPolicy <|.. StudentPolicy
+LoanService <|.. DefaultLoanService
+
+Member --> MembershipType
+Member --> NotificationChannel
+Loan --> LoanStatus
+Reservation --> ReservationStatus
+Notification --> NotificationChannel
+
+DefaultLoanService --> Repository : uses
+DefaultLoanService --> BorrowingPolicyRegistry
+DefaultLoanService --> DefaultFineCalculator
+BorrowingPolicyRegistry --> BorrowingPolicy
+DefaultFineCalculator --> BorrowingPolicyRegistry
+
+Loan --> Book : references
+Loan --> Member : references
+Reservation --> Book : references
+Reservation --> Member : references
+Fine --> Loan : references
+Fine --> Member : references
+Notification --> Member : targets
+
+@enduml

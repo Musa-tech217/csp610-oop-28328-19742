@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LibraryEventBus.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">csp610-oop-smartlib</a> &gt; <a href="index.source.html" class="el_package">smartlib.patterns.behavioural</a> &gt; <span class="el_source">LibraryEventBus.java</span></div><h1>LibraryEventBus.java</h1><pre class="source lang-java linenums">package smartlib.patterns.behavioural;
+// Quick note: this file is here to show the pattern idea without mixing in too much else.
+
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Consumer;
+
+/**
+ * Synchronous, listener-friendly event bus that protects publication from listener failures.
+ */
+public final class LibraryEventBus {
+
+<span class="fc" id="L14">    private final CopyOnWriteArrayList&lt;LibraryEventListener&gt; listeners = new CopyOnWriteArrayList&lt;&gt;();</span>
+    private final Consumer&lt;RuntimeException&gt; errorHandler;
+
+    public LibraryEventBus() {
+<span class="fc" id="L18">        this(ignored -&gt; {</span>
+<span class="nc" id="L19">        });</span>
+<span class="fc" id="L20">    }</span>
+
+<span class="fc" id="L22">    public LibraryEventBus(Consumer&lt;RuntimeException&gt; errorHandler) {</span>
+<span class="fc" id="L23">        this.errorHandler = Objects.requireNonNull(errorHandler, &quot;errorHandler must not be null&quot;);</span>
+<span class="fc" id="L24">    }</span>
+
+    public void subscribe(LibraryEventListener listener) {
+<span class="fc" id="L27">        listeners.add(Objects.requireNonNull(listener, &quot;listener must not be null&quot;));</span>
+<span class="fc" id="L28">    }</span>
+
+    public void unsubscribe(LibraryEventListener listener) {
+<span class="fc" id="L31">        listeners.remove(listener);</span>
+<span class="fc" id="L32">    }</span>
+
+    public void publish(LibraryEvent event) {
+<span class="fc" id="L35">        Objects.requireNonNull(event, &quot;event must not be null&quot;);</span>
+<span class="fc bfc" id="L36" title="All 2 branches covered.">        for (LibraryEventListener listener : listeners) {</span>
+            try {
+<span class="fc" id="L38">                listener.onEvent(event);</span>
+<span class="fc" id="L39">            } catch (RuntimeException exception) {</span>
+<span class="fc" id="L40">                errorHandler.accept(exception);</span>
+<span class="fc" id="L41">            }</span>
+<span class="fc" id="L42">        }</span>
+<span class="fc" id="L43">    }</span>
+
+    public List&lt;LibraryEventListener&gt; listeners() {
+<span class="nc" id="L46">        return List.copyOf(listeners);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

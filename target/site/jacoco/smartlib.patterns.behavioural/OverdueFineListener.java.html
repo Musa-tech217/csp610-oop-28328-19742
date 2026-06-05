@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>OverdueFineListener.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">csp610-oop-smartlib</a> &gt; <a href="index.source.html" class="el_package">smartlib.patterns.behavioural</a> &gt; <span class="el_source">OverdueFineListener.java</span></div><h1>OverdueFineListener.java</h1><pre class="source lang-java linenums">package smartlib.patterns.behavioural;
+// Quick note: this file is here to show the pattern idea without mixing in too much else.
+
+import java.time.LocalDate;
+import java.util.Map;
+import java.util.Objects;
+import smartlib.domain.Fine;
+import smartlib.domain.FineCalculator;
+import smartlib.domain.Loan;
+import smartlib.domain.Member;
+import smartlib.domain.Repository;
+
+/**
+ * Reacts to returned-book events by imposing overdue fines when needed.
+ */
+public final class OverdueFineListener implements LibraryEventListener {
+
+    private final FineCalculator fineCalculator;
+    private final Repository&lt;Fine, String&gt; fineRepository;
+    private final Repository&lt;Member, String&gt; memberRepository;
+    private final LibraryEventBus eventBus;
+
+    public OverdueFineListener(
+            FineCalculator fineCalculator,
+            Repository&lt;Fine, String&gt; fineRepository,
+            Repository&lt;Member, String&gt; memberRepository,
+<span class="fc" id="L27">            LibraryEventBus eventBus) {</span>
+<span class="fc" id="L28">        this.fineCalculator = Objects.requireNonNull(fineCalculator, &quot;fineCalculator must not be null&quot;);</span>
+<span class="fc" id="L29">        this.fineRepository = Objects.requireNonNull(fineRepository, &quot;fineRepository must not be null&quot;);</span>
+<span class="fc" id="L30">        this.memberRepository = Objects.requireNonNull(memberRepository, &quot;memberRepository must not be null&quot;);</span>
+<span class="fc" id="L31">        this.eventBus = Objects.requireNonNull(eventBus, &quot;eventBus must not be null&quot;);</span>
+<span class="fc" id="L32">    }</span>
+
+    @Override
+    public void onEvent(LibraryEvent event) {
+<span class="pc bpc" id="L36" title="1 of 2 branches missed.">        if (event.type() != EventType.BOOK_RETURNED) {</span>
+<span class="nc" id="L37">            return;</span>
+        }
+<span class="fc" id="L39">        Loan loan = event.payload(&quot;loan&quot;, Loan.class);</span>
+<span class="fc" id="L40">        Member member = event.payload(&quot;member&quot;, Member.class);</span>
+<span class="fc" id="L41">        LocalDate returnedOn = event.payload(&quot;returnedOn&quot;, LocalDate.class);</span>
+
+<span class="fc" id="L43">        Fine fine = fineCalculator.calculate(loan, member, returnedOn);</span>
+<span class="pc bpc" id="L44" title="1 of 2 branches missed.">        if (!fine.hasAmount()) {</span>
+<span class="nc" id="L45">            return;</span>
+        }
+
+<span class="fc" id="L48">        fineRepository.save(fine);</span>
+<span class="fc" id="L49">        Member updatedMember = member.addFine(fine.amount());</span>
+<span class="fc" id="L50">        memberRepository.save(updatedMember);</span>
+<span class="fc" id="L51">        eventBus.publish(LibraryEvent.of(</span>
+                EventType.FINE_IMPOSED,
+<span class="fc" id="L53">                Map.of(&quot;fine&quot;, fine, &quot;member&quot;, updatedMember, &quot;loan&quot;, loan)));</span>
+<span class="fc" id="L54">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

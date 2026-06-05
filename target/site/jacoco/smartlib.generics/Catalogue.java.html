@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Catalogue.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">csp610-oop-smartlib</a> &gt; <a href="index.source.html" class="el_package">smartlib.generics</a> &gt; <span class="el_source">Catalogue.java</span></div><h1>Catalogue.java</h1><pre class="source lang-java linenums">package smartlib.generics;
+// Quick note: I tried to keep the generic types clear rather than overly clever.
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import smartlib.domain.Borrowable;
+
+/**
+ * Type-safe catalogue for borrowable, naturally comparable items.
+ *
+ * @param &lt;T&gt; item type that is borrowable and naturally sortable
+ */
+<span class="fc" id="L21">public final class Catalogue&lt;T extends Borrowable &amp; Comparable&lt;T&gt;&gt; {</span>
+
+<span class="fc" id="L23">    private final List&lt;T&gt; items = new ArrayList&lt;&gt;();</span>
+
+    public void add(T item) {
+<span class="fc" id="L26">        items.add(Objects.requireNonNull(item, &quot;item must not be null&quot;));</span>
+<span class="fc" id="L27">    }</span>
+
+    public void remove(T item) {
+<span class="nc" id="L30">        items.remove(Objects.requireNonNull(item, &quot;item must not be null&quot;));</span>
+<span class="nc" id="L31">    }</span>
+
+    public List&lt;T&gt; search(Predicate&lt;T&gt; predicate) {
+<span class="fc" id="L34">        Objects.requireNonNull(predicate, &quot;predicate must not be null&quot;);</span>
+<span class="fc" id="L35">        return items.stream()</span>
+<span class="fc" id="L36">                .filter(predicate)</span>
+<span class="fc" id="L37">                .toList();</span>
+    }
+
+    public &lt;K extends Comparable&lt;? super K&gt;&gt; List&lt;T&gt; sortedBy(Function&lt;? super T, ? extends K&gt; keyExtractor) {
+<span class="fc" id="L41">        Objects.requireNonNull(keyExtractor, &quot;keyExtractor must not be null&quot;);</span>
+<span class="fc" id="L42">        return items.stream()</span>
+<span class="fc" id="L43">                .sorted(Comparator.comparing(keyExtractor))</span>
+<span class="fc" id="L44">                .toList();</span>
+    }
+
+    public void addAllAvailable(Catalogue&lt;? extends T&gt; source) {
+<span class="fc" id="L48">        Objects.requireNonNull(source, &quot;source must not be null&quot;);</span>
+<span class="fc" id="L49">        source.items.stream()</span>
+<span class="fc" id="L50">                .filter(Borrowable::isAvailableForBorrow)</span>
+<span class="fc" id="L51">                .forEach(this::add);</span>
+<span class="fc" id="L52">    }</span>
+
+    public void updateMatching(Predicate&lt;T&gt; predicate, Consumer&lt;? super T&gt; updater) {
+<span class="fc" id="L55">        Objects.requireNonNull(predicate, &quot;predicate must not be null&quot;);</span>
+<span class="fc" id="L56">        Objects.requireNonNull(updater, &quot;updater must not be null&quot;);</span>
+<span class="fc" id="L57">        items.stream()</span>
+<span class="fc" id="L58">                .filter(predicate)</span>
+<span class="fc" id="L59">                .forEach(updater);</span>
+<span class="fc" id="L60">    }</span>
+
+    public &lt;K&gt; Map&lt;K, Long&gt; groupCount(Function&lt;? super T, ? extends K&gt; classifier) {
+<span class="fc" id="L63">        Objects.requireNonNull(classifier, &quot;classifier must not be null&quot;);</span>
+<span class="fc" id="L64">        Map&lt;K, Long&gt; grouped = items.stream()</span>
+<span class="fc" id="L65">                .collect(Collectors.groupingBy(classifier, LinkedHashMap::new, Collectors.counting()));</span>
+<span class="fc" id="L66">        return Map.copyOf(grouped);</span>
+    }
+
+    public List&lt;T&gt; items() {
+<span class="fc" id="L70">        return List.copyOf(items);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

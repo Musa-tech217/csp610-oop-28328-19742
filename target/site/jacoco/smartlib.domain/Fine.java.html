@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Fine.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">csp610-oop-smartlib</a> &gt; <a href="index.source.html" class="el_package">smartlib.domain</a> &gt; <span class="el_source">Fine.java</span></div><h1>Fine.java</h1><pre class="source lang-java linenums">package smartlib.domain;
+// Quick note: I kept the domain code straightforward so the rules are easy to follow.
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Objects;
+
+/**
+ * Immutable fine value capturing amount and payment state.
+ */
+public record Fine(
+        String id,
+        String loanId,
+        String memberId,
+        BigDecimal amount,
+        LocalDate assessedOn,
+        boolean paid) {
+
+<span class="fc" id="L19">    public Fine {</span>
+<span class="fc" id="L20">        Objects.requireNonNull(id, &quot;id must not be null&quot;);</span>
+<span class="fc" id="L21">        Objects.requireNonNull(loanId, &quot;loanId must not be null&quot;);</span>
+<span class="fc" id="L22">        Objects.requireNonNull(memberId, &quot;memberId must not be null&quot;);</span>
+<span class="fc" id="L23">        Objects.requireNonNull(amount, &quot;amount must not be null&quot;);</span>
+<span class="fc" id="L24">        Objects.requireNonNull(assessedOn, &quot;assessedOn must not be null&quot;);</span>
+<span class="pc bpc" id="L25" title="1 of 2 branches missed.">        if (amount.signum() &lt; 0) {</span>
+<span class="nc" id="L26">            throw new IllegalArgumentException(&quot;amount must not be negative&quot;);</span>
+        }
+<span class="fc" id="L28">    }</span>
+
+    public static Fine none(String loanId, String memberId, LocalDate assessedOn) {
+<span class="nc" id="L31">        return new Fine(&quot;fine-&quot; + loanId, loanId, memberId, BigDecimal.ZERO, assessedOn, false);</span>
+    }
+
+    public boolean hasAmount() {
+<span class="fc bfc" id="L35" title="All 2 branches covered.">        return amount.signum() &gt; 0;</span>
+    }
+
+    public Fine markPaid() {
+<span class="nc" id="L39">        return new Fine(id, loanId, memberId, amount, assessedOn, true);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

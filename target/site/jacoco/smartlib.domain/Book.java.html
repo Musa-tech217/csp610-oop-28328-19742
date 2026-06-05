@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Book.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">csp610-oop-smartlib</a> &gt; <a href="index.source.html" class="el_package">smartlib.domain</a> &gt; <span class="el_source">Book.java</span></div><h1>Book.java</h1><pre class="source lang-java linenums">package smartlib.domain;
+// Quick note: I kept the domain code straightforward so the rules are easy to follow.
+
+import java.util.Comparator;
+import java.util.Objects;
+
+/**
+ * Immutable representation of a book and its current available copy count.
+ */
+public record Book(
+        String id,
+        String title,
+        String author,
+        String isbn,
+        String genre,
+        int publicationYear,
+        int availableCopies) implements Borrowable, Comparable&lt;Book&gt; {
+
+<span class="fc" id="L19">    private static final Comparator&lt;Book&gt; NATURAL_ORDER = Comparator</span>
+<span class="fc" id="L20">            .comparing(Book::title)</span>
+<span class="fc" id="L21">            .thenComparing(Book::author)</span>
+<span class="fc" id="L22">            .thenComparingInt(Book::publicationYear)</span>
+<span class="fc" id="L23">            .thenComparing(Book::isbn);</span>
+
+    public Book(String id, String title, String author, String isbn, int availableCopies) {
+<span class="fc" id="L26">        this(id, title, author, isbn, &quot;Unknown&quot;, 0, availableCopies);</span>
+<span class="fc" id="L27">    }</span>
+
+<span class="fc" id="L29">    public Book {</span>
+<span class="fc" id="L30">        Objects.requireNonNull(id, &quot;id must not be null&quot;);</span>
+<span class="fc" id="L31">        Objects.requireNonNull(title, &quot;title must not be null&quot;);</span>
+<span class="fc" id="L32">        Objects.requireNonNull(author, &quot;author must not be null&quot;);</span>
+<span class="fc" id="L33">        Objects.requireNonNull(isbn, &quot;isbn must not be null&quot;);</span>
+<span class="fc" id="L34">        Objects.requireNonNull(genre, &quot;genre must not be null&quot;);</span>
+<span class="pc bpc" id="L35" title="1 of 2 branches missed.">        if (publicationYear &lt; 0) {</span>
+<span class="nc" id="L36">            throw new IllegalArgumentException(&quot;publicationYear must be zero or greater&quot;);</span>
+        }
+<span class="pc bpc" id="L38" title="1 of 2 branches missed.">        if (availableCopies &lt; 0) {</span>
+<span class="nc" id="L39">            throw new IllegalArgumentException(&quot;availableCopies must be zero or greater&quot;);</span>
+        }
+<span class="fc" id="L41">    }</span>
+
+    @Override
+    public boolean isAvailableForBorrow() {
+<span class="fc bfc" id="L45" title="All 2 branches covered.">        return availableCopies &gt; 0;</span>
+    }
+
+    public Book borrowCopy() {
+<span class="pc bpc" id="L49" title="1 of 2 branches missed.">        if (!isAvailableForBorrow()) {</span>
+<span class="nc" id="L50">            throw new IllegalStateException(&quot;Book is not available for borrowing&quot;);</span>
+        }
+<span class="fc" id="L52">        return new Book(id, title, author, isbn, genre, publicationYear, availableCopies - 1);</span>
+    }
+
+    public Book returnCopy() {
+<span class="fc" id="L56">        return new Book(id, title, author, isbn, genre, publicationYear, availableCopies + 1);</span>
+    }
+
+    @Override
+    public int compareTo(Book other) {
+<span class="fc" id="L61">        Objects.requireNonNull(other, &quot;other must not be null&quot;);</span>
+<span class="fc" id="L62">        return NATURAL_ORDER.compare(this, other);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DefaultLoanService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">csp610-oop-smartlib</a> &gt; <a href="index.source.html" class="el_package">smartlib.domain</a> &gt; <span class="el_source">DefaultLoanService.java</span></div><h1>DefaultLoanService.java</h1><pre class="source lang-java linenums">package smartlib.domain;
+// Quick note: I kept the domain code straightforward so the rules are easy to follow.
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Objects;
+import java.util.UUID;
+
+/**
+ * Orchestrates borrowing and returns while delegating pricing, persistence, and notifications.
+ */
+public final class DefaultLoanService implements LoanService {
+
+    private final Repository&lt;Member, String&gt; memberRepository;
+    private final Repository&lt;Book, String&gt; bookRepository;
+    private final Repository&lt;Loan, String&gt; loanRepository;
+    private final Repository&lt;Fine, String&gt; fineRepository;
+    private final Repository&lt;Notification, String&gt; notificationRepository;
+    private final BorrowingPolicyRegistry policyRegistry;
+    private final FineCalculator fineCalculator;
+    private final NotificationSender notificationSender;
+
+    public DefaultLoanService(
+            Repository&lt;Member, String&gt; memberRepository,
+            Repository&lt;Book, String&gt; bookRepository,
+            Repository&lt;Loan, String&gt; loanRepository,
+            Repository&lt;Fine, String&gt; fineRepository,
+            Repository&lt;Notification, String&gt; notificationRepository,
+            BorrowingPolicyRegistry policyRegistry,
+            FineCalculator fineCalculator,
+<span class="fc" id="L32">            NotificationSender notificationSender) {</span>
+<span class="fc" id="L33">        this.memberRepository = Objects.requireNonNull(memberRepository, &quot;memberRepository must not be null&quot;);</span>
+<span class="fc" id="L34">        this.bookRepository = Objects.requireNonNull(bookRepository, &quot;bookRepository must not be null&quot;);</span>
+<span class="fc" id="L35">        this.loanRepository = Objects.requireNonNull(loanRepository, &quot;loanRepository must not be null&quot;);</span>
+<span class="fc" id="L36">        this.fineRepository = Objects.requireNonNull(fineRepository, &quot;fineRepository must not be null&quot;);</span>
+<span class="fc" id="L37">        this.notificationRepository = Objects.requireNonNull(notificationRepository, &quot;notificationRepository must not be null&quot;);</span>
+<span class="fc" id="L38">        this.policyRegistry = Objects.requireNonNull(policyRegistry, &quot;policyRegistry must not be null&quot;);</span>
+<span class="fc" id="L39">        this.fineCalculator = Objects.requireNonNull(fineCalculator, &quot;fineCalculator must not be null&quot;);</span>
+<span class="fc" id="L40">        this.notificationSender = Objects.requireNonNull(notificationSender, &quot;notificationSender must not be null&quot;);</span>
+<span class="fc" id="L41">    }</span>
+
+    @Override
+    public Loan borrowBook(String memberId, String bookId, LocalDate borrowedOn) {
+<span class="fc" id="L45">        Objects.requireNonNull(memberId, &quot;memberId must not be null&quot;);</span>
+<span class="fc" id="L46">        Objects.requireNonNull(bookId, &quot;bookId must not be null&quot;);</span>
+<span class="fc" id="L47">        Objects.requireNonNull(borrowedOn, &quot;borrowedOn must not be null&quot;);</span>
+
+<span class="fc" id="L49">        Member member = memberRepository.findById(memberId)</span>
+<span class="pc" id="L50">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Member not found: &quot; + memberId));</span>
+<span class="fc" id="L51">        Book book = bookRepository.findById(bookId)</span>
+<span class="pc" id="L52">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Book not found: &quot; + bookId));</span>
+
+<span class="fc" id="L54">        BorrowingPolicy policy = policyRegistry.getPolicyFor(member.membershipType());</span>
+<span class="fc" id="L55">        int activeLoanCount = (int) loanRepository.findAll().stream()</span>
+<span class="fc" id="L56">                .filter(loan -&gt; loan.memberId().equals(memberId))</span>
+<span class="fc" id="L57">                .filter(Loan::isActive)</span>
+<span class="fc" id="L58">                .count();</span>
+
+<span class="fc bfc" id="L60" title="All 2 branches covered.">        if (!member.canBorrow(activeLoanCount, policy)) {</span>
+<span class="fc" id="L61">            throw new IllegalStateException(&quot;Member is not allowed to borrow more books&quot;);</span>
+        }
+<span class="pc bpc" id="L63" title="1 of 2 branches missed.">        if (!book.isAvailableForBorrow()) {</span>
+<span class="nc" id="L64">            throw new IllegalStateException(&quot;Book is not available for borrowing&quot;);</span>
+        }
+
+<span class="fc" id="L67">        bookRepository.save(book.borrowCopy());</span>
+<span class="fc" id="L68">        Loan loan = Loan.open(UUID.randomUUID().toString(), book.id(), member.id(), borrowedOn, policy.loanPeriodDays());</span>
+<span class="fc" id="L69">        return loanRepository.save(loan);</span>
+    }
+
+    @Override
+    public Loan returnBook(String loanId, LocalDate returnedOn) {
+<span class="fc" id="L74">        Objects.requireNonNull(loanId, &quot;loanId must not be null&quot;);</span>
+<span class="fc" id="L75">        Objects.requireNonNull(returnedOn, &quot;returnedOn must not be null&quot;);</span>
+
+<span class="fc" id="L77">        Loan loan = loanRepository.findById(loanId)</span>
+<span class="pc" id="L78">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Loan not found: &quot; + loanId));</span>
+<span class="fc" id="L79">        Member member = memberRepository.findById(loan.memberId())</span>
+<span class="pc" id="L80">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Member not found: &quot; + loan.memberId()));</span>
+<span class="fc" id="L81">        Book book = bookRepository.findById(loan.bookId())</span>
+<span class="pc" id="L82">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Book not found: &quot; + loan.bookId()));</span>
+
+<span class="fc" id="L84">        Loan returnedLoan = loan.returnOn(returnedOn);</span>
+<span class="fc" id="L85">        loanRepository.save(returnedLoan);</span>
+<span class="fc" id="L86">        bookRepository.save(book.returnCopy());</span>
+
+<span class="fc" id="L88">        Fine fine = fineCalculator.calculate(loan, member, returnedOn);</span>
+<span class="pc bpc" id="L89" title="1 of 2 branches missed.">        if (fine.hasAmount()) {</span>
+<span class="fc" id="L90">            fineRepository.save(fine);</span>
+<span class="fc" id="L91">            memberRepository.save(member.addFine(fine.amount()));</span>
+        }
+
+<span class="fc" id="L94">        Notification notification = new Notification(</span>
+<span class="fc" id="L95">                UUID.randomUUID().toString(),</span>
+<span class="fc" id="L96">                member.id(),</span>
+<span class="fc" id="L97">                member.notificationAddress(),</span>
+<span class="fc" id="L98">                member.preferredChannel(),</span>
+                &quot;Book return processed&quot;,
+<span class="fc" id="L100">                createReturnMessage(returnedLoan, fine.amount()),</span>
+<span class="fc" id="L101">                LocalDateTime.now());</span>
+<span class="fc" id="L102">        notificationRepository.save(notification);</span>
+<span class="fc" id="L103">        notificationSender.send(notification);</span>
+
+<span class="fc" id="L105">        return returnedLoan;</span>
+    }
+
+    private String createReturnMessage(Loan returnedLoan, BigDecimal fineAmount) {
+<span class="pc bpc" id="L109" title="1 of 2 branches missed.">        if (fineAmount.signum() &gt; 0) {</span>
+<span class="fc" id="L110">            return &quot;Loan &quot; + returnedLoan.id() + &quot; has been returned. Outstanding fine: $&quot; + fineAmount;</span>
+        }
+<span class="nc" id="L112">        return &quot;Loan &quot; + returnedLoan.id() + &quot; has been returned with no fine due.&quot;;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

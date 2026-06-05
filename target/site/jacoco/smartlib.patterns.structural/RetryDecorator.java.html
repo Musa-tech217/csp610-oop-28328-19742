@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RetryDecorator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">csp610-oop-smartlib</a> &gt; <a href="index.source.html" class="el_package">smartlib.patterns.structural</a> &gt; <span class="el_source">RetryDecorator.java</span></div><h1>RetryDecorator.java</h1><pre class="source lang-java linenums">package smartlib.patterns.structural;
+// Quick note: this file is here to show the pattern idea without mixing in too much else.
+
+import java.time.Duration;
+import java.util.Objects;
+import java.util.function.LongConsumer;
+import smartlib.domain.Notification;
+
+/**
+ * Retries transient failures with exponential backoff.
+ */
+public final class RetryDecorator extends NotificationDecorator {
+
+    private final int maxAttempts;
+    private final Duration initialBackoff;
+    private final LongConsumer sleeper;
+
+    public RetryDecorator(NotificationService delegate, int maxAttempts) {
+<span class="nc" id="L19">        this(delegate, maxAttempts, Duration.ofMillis(100), ignored -&gt; {</span>
+<span class="nc" id="L20">        });</span>
+<span class="nc" id="L21">    }</span>
+
+    public RetryDecorator(NotificationService delegate, int maxAttempts, Duration initialBackoff, LongConsumer sleeper) {
+<span class="fc" id="L24">        super(delegate);</span>
+<span class="pc bpc" id="L25" title="1 of 2 branches missed.">        if (maxAttempts &lt; 1) {</span>
+<span class="nc" id="L26">            throw new IllegalArgumentException(&quot;maxAttempts must be at least 1&quot;);</span>
+        }
+<span class="fc" id="L28">        this.maxAttempts = maxAttempts;</span>
+<span class="fc" id="L29">        this.initialBackoff = Objects.requireNonNull(initialBackoff, &quot;initialBackoff must not be null&quot;);</span>
+<span class="fc" id="L30">        this.sleeper = Objects.requireNonNull(sleeper, &quot;sleeper must not be null&quot;);</span>
+<span class="fc" id="L31">    }</span>
+
+    @Override
+    public void send(Notification notification) {
+<span class="fc" id="L35">        RuntimeException lastFailure = null;</span>
+<span class="fc" id="L36">        long delay = initialBackoff.toMillis();</span>
+
+<span class="pc bpc" id="L38" title="1 of 2 branches missed.">        for (int attempt = 1; attempt &lt;= maxAttempts; attempt++) {</span>
+            try {
+<span class="fc" id="L40">                delegate().send(notification);</span>
+<span class="fc" id="L41">                return;</span>
+<span class="fc" id="L42">            } catch (RuntimeException exception) {</span>
+<span class="fc" id="L43">                lastFailure = exception;</span>
+<span class="pc bpc" id="L44" title="1 of 2 branches missed.">                if (attempt == maxAttempts) {</span>
+<span class="nc" id="L45">                    throw exception;</span>
+                }
+<span class="fc" id="L47">                sleeper.accept(delay);</span>
+<span class="fc" id="L48">                delay *= 2;</span>
+            }
+        }
+
+<span class="nc" id="L52">        throw lastFailure;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

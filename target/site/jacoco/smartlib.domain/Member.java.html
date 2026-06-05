@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Member.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">csp610-oop-smartlib</a> &gt; <a href="index.source.html" class="el_package">smartlib.domain</a> &gt; <span class="el_source">Member.java</span></div><h1>Member.java</h1><pre class="source lang-java linenums">package smartlib.domain;
+// Quick note: I kept the domain code straightforward so the rules are easy to follow.
+
+import java.math.BigDecimal;
+import java.util.Objects;
+
+/**
+ * Immutable member aggregate root for borrowing decisions.
+ */
+public record Member(
+        String id,
+        String name,
+        String email,
+        MembershipType membershipType,
+        BigDecimal outstandingFine,
+        NotificationChannel preferredChannel) implements Notifiable {
+
+<span class="fc" id="L18">    private static final BigDecimal MAX_ALLOWED_OUTSTANDING_FINE = new BigDecimal(&quot;10.00&quot;);</span>
+
+<span class="fc" id="L20">    public Member {</span>
+<span class="fc" id="L21">        Objects.requireNonNull(id, &quot;id must not be null&quot;);</span>
+<span class="fc" id="L22">        Objects.requireNonNull(name, &quot;name must not be null&quot;);</span>
+<span class="fc" id="L23">        Objects.requireNonNull(email, &quot;email must not be null&quot;);</span>
+<span class="fc" id="L24">        Objects.requireNonNull(membershipType, &quot;membershipType must not be null&quot;);</span>
+<span class="fc" id="L25">        Objects.requireNonNull(outstandingFine, &quot;outstandingFine must not be null&quot;);</span>
+<span class="fc" id="L26">        Objects.requireNonNull(preferredChannel, &quot;preferredChannel must not be null&quot;);</span>
+<span class="pc bpc" id="L27" title="1 of 2 branches missed.">        if (outstandingFine.signum() &lt; 0) {</span>
+<span class="nc" id="L28">            throw new IllegalArgumentException(&quot;outstandingFine must not be negative&quot;);</span>
+        }
+<span class="fc" id="L30">    }</span>
+
+    public boolean canBorrow(int activeLoanCount, BorrowingPolicy policy) {
+<span class="fc bfc" id="L33" title="All 4 branches covered.">        return !hasExceededFineLimit() &amp;&amp; policy.canBorrow(activeLoanCount);</span>
+    }
+
+    public boolean hasExceededFineLimit() {
+<span class="fc bfc" id="L37" title="All 2 branches covered.">        return outstandingFine.compareTo(MAX_ALLOWED_OUTSTANDING_FINE) &gt; 0;</span>
+    }
+
+    public Member addFine(BigDecimal additionalFine) {
+<span class="fc" id="L41">        Objects.requireNonNull(additionalFine, &quot;additionalFine must not be null&quot;);</span>
+<span class="fc" id="L42">        return new Member(id, name, email, membershipType, outstandingFine.add(additionalFine), preferredChannel);</span>
+    }
+
+    @Override
+    public String notificationAddress() {
+<span class="fc" id="L47">        return email;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

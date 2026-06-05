@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ReflectionTypeTokenDemo.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">csp610-oop-smartlib</a> &gt; <a href="index.source.html" class="el_package">smartlib.generics</a> &gt; <span class="el_source">ReflectionTypeTokenDemo.java</span></div><h1>ReflectionTypeTokenDemo.java</h1><pre class="source lang-java linenums">package smartlib.generics;
+// Quick note: I tried to keep the generic types clear rather than overly clever.
+
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.util.Arrays;
+import java.util.List;
+import smartlib.domain.Book;
+import smartlib.domain.BookRepository;
+import smartlib.domain.Repository;
+
+/**
+ * Demonstrates generic type erasure and a type-token style workaround.
+ */
+public final class ReflectionTypeTokenDemo {
+
+    private ReflectionTypeTokenDemo() {
+    }
+
+    public static List&lt;String&gt; inspectRepositoryTypeArgumentsFromSubclass() {
+<span class="fc" id="L21">        Type genericSuperclass = BookRepository.class.getGenericSuperclass();</span>
+<span class="pc bpc" id="L22" title="1 of 2 branches missed.">        if (genericSuperclass instanceof ParameterizedType parameterizedType) {</span>
+<span class="fc" id="L23">            return Arrays.stream(parameterizedType.getActualTypeArguments())</span>
+<span class="fc" id="L24">                    .map(Type::getTypeName)</span>
+<span class="fc" id="L25">                    .toList();</span>
+        }
+<span class="nc" id="L27">        return List.of();</span>
+    }
+
+    public static List&lt;String&gt; inspectErasedRepositoryTypeParameters() {
+<span class="fc" id="L31">        return Arrays.stream(Repository.class.getTypeParameters())</span>
+<span class="fc" id="L32">                .map(typeVariable -&gt; typeVariable.getName())</span>
+<span class="fc" id="L33">                .toList();</span>
+    }
+
+    public static String inspectAnonymousRepositoryTokenType() {
+<span class="fc" id="L37">        TypeToken&lt;Repository&lt;Book, String&gt;&gt; token = new TypeToken&lt;&gt;() {</span>
+        };
+<span class="fc" id="L39">        return token.type().getTypeName();</span>
+    }
+
+    public abstract static class TypeToken&lt;T&gt; {
+
+        private final Type type;
+
+<span class="fc" id="L46">        protected TypeToken() {</span>
+<span class="fc" id="L47">            Type genericSuperclass = getClass().getGenericSuperclass();</span>
+<span class="pc bpc" id="L48" title="1 of 2 branches missed.">            if (!(genericSuperclass instanceof ParameterizedType parameterizedType)) {</span>
+<span class="nc" id="L49">                throw new IllegalStateException(&quot;Type token must be created with an anonymous parameterized subclass&quot;);</span>
+            }
+<span class="fc" id="L51">            this.type = parameterizedType.getActualTypeArguments()[0];</span>
+<span class="fc" id="L52">        }</span>
+
+        public Type type() {
+<span class="fc" id="L55">            return type;</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

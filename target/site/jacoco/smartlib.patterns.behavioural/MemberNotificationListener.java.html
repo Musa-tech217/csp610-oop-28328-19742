@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MemberNotificationListener.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">csp610-oop-smartlib</a> &gt; <a href="index.source.html" class="el_package">smartlib.patterns.behavioural</a> &gt; <span class="el_source">MemberNotificationListener.java</span></div><h1>MemberNotificationListener.java</h1><pre class="source lang-java linenums">package smartlib.patterns.behavioural;
+// Quick note: this file is here to show the pattern idea without mixing in too much else.
+
+import java.time.LocalDateTime;
+import java.util.Objects;
+import java.util.UUID;
+import smartlib.domain.Member;
+import smartlib.domain.Notification;
+import smartlib.domain.NotificationChannel;
+import smartlib.domain.NotificationSender;
+import smartlib.domain.Repository;
+import smartlib.domain.Reservation;
+import smartlib.domain.Fine;
+
+/**
+ * Sends member-facing notifications in response to selected library events.
+ */
+public final class MemberNotificationListener implements LibraryEventListener {
+
+    private final Repository&lt;Notification, String&gt; notificationRepository;
+    private final NotificationSender notificationSender;
+
+    public MemberNotificationListener(
+            Repository&lt;Notification, String&gt; notificationRepository,
+<span class="fc" id="L25">            NotificationSender notificationSender) {</span>
+<span class="fc" id="L26">        this.notificationRepository = Objects.requireNonNull(notificationRepository, &quot;notificationRepository must not be null&quot;);</span>
+<span class="fc" id="L27">        this.notificationSender = Objects.requireNonNull(notificationSender, &quot;notificationSender must not be null&quot;);</span>
+<span class="fc" id="L28">    }</span>
+
+    @Override
+    public void onEvent(LibraryEvent event) {
+<span class="pc bpc" id="L32" title="1 of 3 branches missed.">        Notification notification = switch (event.type()) {</span>
+<span class="fc" id="L33">            case RESERVATION_EXPIRED -&gt; buildReservationExpiredNotification(event);</span>
+<span class="fc" id="L34">            case FINE_IMPOSED -&gt; buildFineImposedNotification(event);</span>
+<span class="pc" id="L35">            default -&gt; null;</span>
+        };
+<span class="pc bpc" id="L37" title="1 of 2 branches missed.">        if (notification == null) {</span>
+<span class="nc" id="L38">            return;</span>
+        }
+<span class="fc" id="L40">        notificationRepository.save(notification);</span>
+<span class="fc" id="L41">        notificationSender.send(notification);</span>
+<span class="fc" id="L42">    }</span>
+
+    private Notification buildReservationExpiredNotification(LibraryEvent event) {
+<span class="fc" id="L45">        Reservation reservation = event.payload(&quot;reservation&quot;, Reservation.class);</span>
+<span class="fc" id="L46">        Member member = event.payload(&quot;member&quot;, Member.class);</span>
+<span class="fc" id="L47">        return new Notification(</span>
+<span class="fc" id="L48">                UUID.randomUUID().toString(),</span>
+<span class="fc" id="L49">                member.id(),</span>
+<span class="fc" id="L50">                member.notificationAddress(),</span>
+<span class="fc" id="L51">                preferredChannel(member),</span>
+                &quot;Reservation expired&quot;,
+<span class="fc" id="L53">                &quot;Your reservation &quot; + reservation.id() + &quot; for book &quot; + reservation.bookId() + &quot; has expired.&quot;,</span>
+<span class="fc" id="L54">                LocalDateTime.now());</span>
+    }
+
+    private Notification buildFineImposedNotification(LibraryEvent event) {
+<span class="fc" id="L58">        Fine fine = event.payload(&quot;fine&quot;, Fine.class);</span>
+<span class="fc" id="L59">        Member member = event.payload(&quot;member&quot;, Member.class);</span>
+<span class="fc" id="L60">        return new Notification(</span>
+<span class="fc" id="L61">                UUID.randomUUID().toString(),</span>
+<span class="fc" id="L62">                member.id(),</span>
+<span class="fc" id="L63">                member.notificationAddress(),</span>
+<span class="fc" id="L64">                preferredChannel(member),</span>
+                &quot;Fine imposed&quot;,
+<span class="fc" id="L66">                &quot;A fine of $&quot; + fine.amount() + &quot; has been imposed on your account.&quot;,</span>
+<span class="fc" id="L67">                LocalDateTime.now());</span>
+    }
+
+    private NotificationChannel preferredChannel(Member member) {
+<span class="fc" id="L71">        return member.preferredChannel();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

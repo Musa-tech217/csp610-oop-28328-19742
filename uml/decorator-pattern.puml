@@ -1,0 +1,28 @@
+@startuml
+title SmartLib Decorator Pattern
+
+interface NotificationService {
+  +send(notification)
+}
+
+class EmailNotificationService
+abstract class NotificationDecorator
+class LoggingDecorator
+class RetryDecorator
+class RateLimitingDecorator
+class Notification
+
+NotificationService <|.. EmailNotificationService
+NotificationService <|.. NotificationDecorator
+NotificationDecorator <|-- LoggingDecorator
+NotificationDecorator <|-- RetryDecorator
+NotificationDecorator <|-- RateLimitingDecorator
+NotificationDecorator o--> NotificationService : delegates to
+NotificationService --> Notification
+
+note bottom of RateLimitingDecorator
+Composed example:
+RateLimiting -> Retry -> Logging -> Email
+end note
+
+@enduml

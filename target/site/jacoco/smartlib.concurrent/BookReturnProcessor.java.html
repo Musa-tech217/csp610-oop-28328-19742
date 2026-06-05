@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BookReturnProcessor.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">csp610-oop-smartlib</a> &gt; <a href="index.source.html" class="el_package">smartlib.concurrent</a> &gt; <span class="el_source">BookReturnProcessor.java</span></div><h1>BookReturnProcessor.java</h1><pre class="source lang-java linenums">package smartlib.concurrent;
+// Quick note: I kept the shared state small here because that felt safer.
+
+import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
+import smartlib.domain.Book;
+import smartlib.domain.Fine;
+import smartlib.domain.FineCalculator;
+import smartlib.domain.Loan;
+import smartlib.domain.Member;
+import smartlib.domain.Notification;
+import smartlib.domain.NotificationSender;
+import smartlib.domain.Repository;
+import smartlib.patterns.behavioural.EventType;
+import smartlib.patterns.behavioural.LibraryEvent;
+import smartlib.patterns.behavioural.LibraryEventBus;
+
+/**
+ * Processes book returns asynchronously while keeping the state transition safe and observable.
+ */
+public final class BookReturnProcessor {
+
+    private final Repository&lt;Loan, String&gt; loanRepository;
+    private final Repository&lt;Book, String&gt; bookRepository;
+    private final Repository&lt;Member, String&gt; memberRepository;
+    private final Repository&lt;Fine, String&gt; fineRepository;
+    private final NotificationSender notificationSender;
+    private final LibraryEventBus eventBus;
+    private final FineCalculator fineCalculator;
+    private final Clock clock;
+    private final ExecutorService executorService;
+<span class="fc" id="L45">    private final AtomicInteger processedCounter = new AtomicInteger();</span>
+<span class="fc" id="L46">    private final AtomicInteger failedCounter = new AtomicInteger();</span>
+<span class="fc" id="L47">    private final ReentrantLock stateLock = new ReentrantLock();</span>
+
+    public BookReturnProcessor(
+            Repository&lt;Loan, String&gt; loanRepository,
+            Repository&lt;Book, String&gt; bookRepository,
+            Repository&lt;Member, String&gt; memberRepository,
+            Repository&lt;Fine, String&gt; fineRepository,
+            NotificationSender notificationSender,
+            LibraryEventBus eventBus,
+            FineCalculator fineCalculator,
+            Clock clock,
+            int threadPoolSize) {
+<span class="fc" id="L59">        this(</span>
+                loanRepository,
+                bookRepository,
+                memberRepository,
+                fineRepository,
+                notificationSender,
+                eventBus,
+                fineCalculator,
+                clock,
+<span class="fc" id="L68">                Executors.newFixedThreadPool(threadPoolSize, new NamedThreadFactory()));</span>
+<span class="fc" id="L69">    }</span>
+
+    BookReturnProcessor(
+            Repository&lt;Loan, String&gt; loanRepository,
+            Repository&lt;Book, String&gt; bookRepository,
+            Repository&lt;Member, String&gt; memberRepository,
+            Repository&lt;Fine, String&gt; fineRepository,
+            NotificationSender notificationSender,
+            LibraryEventBus eventBus,
+            FineCalculator fineCalculator,
+            Clock clock,
+<span class="fc" id="L80">            ExecutorService executorService) {</span>
+<span class="fc" id="L81">        this.loanRepository = Objects.requireNonNull(loanRepository, &quot;loanRepository must not be null&quot;);</span>
+<span class="fc" id="L82">        this.bookRepository = Objects.requireNonNull(bookRepository, &quot;bookRepository must not be null&quot;);</span>
+<span class="fc" id="L83">        this.memberRepository = Objects.requireNonNull(memberRepository, &quot;memberRepository must not be null&quot;);</span>
+<span class="fc" id="L84">        this.fineRepository = Objects.requireNonNull(fineRepository, &quot;fineRepository must not be null&quot;);</span>
+<span class="fc" id="L85">        this.notificationSender = Objects.requireNonNull(notificationSender, &quot;notificationSender must not be null&quot;);</span>
+<span class="fc" id="L86">        this.eventBus = Objects.requireNonNull(eventBus, &quot;eventBus must not be null&quot;);</span>
+<span class="fc" id="L87">        this.fineCalculator = Objects.requireNonNull(fineCalculator, &quot;fineCalculator must not be null&quot;);</span>
+<span class="fc" id="L88">        this.clock = Objects.requireNonNull(clock, &quot;clock must not be null&quot;);</span>
+<span class="fc" id="L89">        this.executorService = Objects.requireNonNull(executorService, &quot;executorService must not be null&quot;);</span>
+<span class="fc" id="L90">    }</span>
+
+    public CompletableFuture&lt;ReturnResult&gt; processReturn(String loanId) {
+<span class="fc" id="L93">        return CompletableFuture</span>
+<span class="fc" id="L94">                .supplyAsync(() -&gt; validateAndPrepare(loanId), executorService)</span>
+<span class="fc" id="L95">                .thenApplyAsync(this::applyAtomicReturnUpdate, executorService)</span>
+<span class="fc" id="L96">                .thenApplyAsync(this::sendNotification, executorService)</span>
+<span class="fc" id="L97">                .thenApplyAsync(this::publishReturnEvent, executorService)</span>
+<span class="fc" id="L98">                .thenApply(result -&gt; {</span>
+<span class="fc" id="L99">                    processedCounter.incrementAndGet();</span>
+<span class="fc" id="L100">                    return result;</span>
+                })
+<span class="fc" id="L102">                .exceptionally(exception -&gt; {</span>
+<span class="fc" id="L103">                    failedCounter.incrementAndGet();</span>
+<span class="fc" id="L104">                    return ReturnResult.failure(loanId, unwrapMessage(exception));</span>
+                });
+    }
+
+    public CompletableFuture&lt;List&lt;ReturnResult&gt;&gt; processBatch(List&lt;String&gt; loanIds) {
+<span class="fc" id="L109">        Objects.requireNonNull(loanIds, &quot;loanIds must not be null&quot;);</span>
+<span class="fc" id="L110">        List&lt;CompletableFuture&lt;ReturnResult&gt;&gt; futures = loanIds.stream()</span>
+<span class="fc" id="L111">                .map(this::processReturn)</span>
+<span class="fc" id="L112">                .toList();</span>
+
+<span class="fc" id="L114">        return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new))</span>
+<span class="fc" id="L115">                .thenApply(ignored -&gt; futures.stream().map(CompletableFuture::join).toList());</span>
+    }
+
+    public void shutdown() {
+<span class="fc" id="L119">        executorService.shutdown();</span>
+        try {
+<span class="pc bpc" id="L121" title="1 of 2 branches missed.">            if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {</span>
+<span class="nc" id="L122">                executorService.shutdownNow();</span>
+            }
+<span class="nc" id="L124">        } catch (InterruptedException interruptedException) {</span>
+<span class="nc" id="L125">            executorService.shutdownNow();</span>
+<span class="nc" id="L126">            Thread.currentThread().interrupt();</span>
+<span class="fc" id="L127">        }</span>
+<span class="fc" id="L128">    }</span>
+
+    public int processedCount() {
+<span class="fc" id="L131">        return processedCounter.get();</span>
+    }
+
+    public int failedCount() {
+<span class="fc" id="L135">        return failedCounter.get();</span>
+    }
+
+    private ReturnPreparation validateAndPrepare(String loanId) {
+<span class="fc" id="L139">        Loan loan = loanRepository.findById(loanId)</span>
+<span class="fc" id="L140">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Loan not found: &quot; + loanId));</span>
+<span class="fc" id="L141">        Member member = memberRepository.findById(loan.memberId())</span>
+<span class="pc" id="L142">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Member not found: &quot; + loan.memberId()));</span>
+<span class="fc" id="L143">        Book book = bookRepository.findById(loan.bookId())</span>
+<span class="pc" id="L144">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Book not found: &quot; + loan.bookId()));</span>
+<span class="fc" id="L145">        LocalDate returnedOn = LocalDate.now(clock);</span>
+<span class="fc" id="L146">        Loan returnedLoan = loan.returnOn(returnedOn);</span>
+<span class="fc" id="L147">        return new ReturnPreparation(loan, returnedLoan, member, book, returnedOn);</span>
+    }
+
+    private ReturnState applyAtomicReturnUpdate(ReturnPreparation preparation) {
+<span class="fc" id="L151">        stateLock.lock();</span>
+        try {
+<span class="fc" id="L153">            loanRepository.save(preparation.returnedLoan());</span>
+<span class="fc" id="L154">            bookRepository.save(preparation.book().returnCopy());</span>
+<span class="fc" id="L155">            Fine fine = fineCalculator.calculate(preparation.originalLoan(), preparation.member(), preparation.returnedOn());</span>
+<span class="fc bfc" id="L156" title="All 2 branches covered.">            if (fine.hasAmount()) {</span>
+<span class="fc" id="L157">                fineRepository.save(fine);</span>
+<span class="fc" id="L158">                memberRepository.save(preparation.member().addFine(fine.amount()));</span>
+            }
+<span class="fc" id="L160">            return new ReturnState(preparation, fine);</span>
+        } finally {
+<span class="fc" id="L162">            stateLock.unlock();</span>
+        }
+    }
+
+    private ReturnState sendNotification(ReturnState state) {
+<span class="fc" id="L167">        Notification notification = new Notification(</span>
+<span class="fc" id="L168">                UUID.randomUUID().toString(),</span>
+<span class="fc" id="L169">                state.preparation().member().id(),</span>
+<span class="fc" id="L170">                state.preparation().member().notificationAddress(),</span>
+<span class="fc" id="L171">                state.preparation().member().preferredChannel(),</span>
+                &quot;Book return processed&quot;,
+<span class="fc" id="L173">                notificationMessage(state),</span>
+<span class="fc" id="L174">                LocalDateTime.now(clock));</span>
+<span class="fc" id="L175">        notificationSender.send(notification);</span>
+<span class="fc" id="L176">        return state;</span>
+    }
+
+    private ReturnResult publishReturnEvent(ReturnState state) {
+<span class="fc" id="L180">        eventBus.publish(LibraryEvent.of(</span>
+                EventType.BOOK_RETURNED,
+<span class="fc" id="L182">                Map.of(</span>
+<span class="fc" id="L183">                        &quot;loan&quot;, state.preparation().originalLoan(),</span>
+<span class="fc" id="L184">                        &quot;returnedLoan&quot;, state.preparation().returnedLoan(),</span>
+<span class="fc" id="L185">                        &quot;member&quot;, state.preparation().member(),</span>
+<span class="fc" id="L186">                        &quot;returnedOn&quot;, state.preparation().returnedOn(),</span>
+<span class="fc" id="L187">                        &quot;fine&quot;, state.fine())));</span>
+<span class="fc" id="L188">        return ReturnResult.success(</span>
+<span class="fc" id="L189">                state.preparation().returnedLoan().id(),</span>
+<span class="fc" id="L190">                state.preparation().returnedLoan(),</span>
+<span class="fc" id="L191">                state.fine().amount());</span>
+    }
+
+    private String notificationMessage(ReturnState state) {
+<span class="fc bfc" id="L195" title="All 2 branches covered.">        if (state.fine().hasAmount()) {</span>
+<span class="fc" id="L196">            return &quot;Loan &quot; + state.preparation().returnedLoan().id()</span>
+<span class="fc" id="L197">                    + &quot; returned with fine $&quot; + state.fine().amount();</span>
+        }
+<span class="fc" id="L199">        return &quot;Loan &quot; + state.preparation().returnedLoan().id() + &quot; returned successfully.&quot;;</span>
+    }
+
+    private String unwrapMessage(Throwable throwable) {
+<span class="fc" id="L203">        Throwable current = throwable;</span>
+<span class="fc bfc" id="L204" title="All 2 branches covered.">        while (current.getCause() != null) {</span>
+<span class="fc" id="L205">            current = current.getCause();</span>
+        }
+<span class="pc bpc" id="L207" title="1 of 2 branches missed.">        return current.getMessage() == null ? current.getClass().getSimpleName() : current.getMessage();</span>
+    }
+
+<span class="fc" id="L210">    private record ReturnPreparation(</span>
+            Loan originalLoan,
+            Loan returnedLoan,
+            Member member,
+            Book book,
+            LocalDate returnedOn) {
+    }
+
+<span class="fc" id="L218">    private record ReturnState(ReturnPreparation preparation, Fine fine) {</span>
+    }
+
+<span class="fc" id="L221">    private static final class NamedThreadFactory implements ThreadFactory {</span>
+
+<span class="fc" id="L223">        private final AtomicInteger sequence = new AtomicInteger();</span>
+
+        @Override
+        public Thread newThread(Runnable runnable) {
+<span class="fc" id="L227">            Thread thread = new Thread(runnable, &quot;book-return-&quot; + sequence.incrementAndGet());</span>
+<span class="fc" id="L228">            thread.setDaemon(true);</span>
+<span class="fc" id="L229">            return thread;</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

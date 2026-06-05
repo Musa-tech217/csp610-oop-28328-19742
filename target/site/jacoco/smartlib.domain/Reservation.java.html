@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Reservation.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">csp610-oop-smartlib</a> &gt; <a href="index.source.html" class="el_package">smartlib.domain</a> &gt; <span class="el_source">Reservation.java</span></div><h1>Reservation.java</h1><pre class="source lang-java linenums">package smartlib.domain;
+// Quick note: I kept the domain code straightforward so the rules are easy to follow.
+
+import java.time.LocalDate;
+import java.util.Objects;
+
+/**
+ * Immutable reservation with a fixed three-day expiry rule.
+ */
+public record Reservation(
+        String id,
+        String bookId,
+        String memberId,
+        LocalDate reservedOn,
+        LocalDate expiresOn,
+        ReservationStatus status) {
+
+    private static final int EXPIRY_DAYS = 3;
+
+<span class="fc" id="L20">    public Reservation {</span>
+<span class="fc" id="L21">        Objects.requireNonNull(id, &quot;id must not be null&quot;);</span>
+<span class="fc" id="L22">        Objects.requireNonNull(bookId, &quot;bookId must not be null&quot;);</span>
+<span class="fc" id="L23">        Objects.requireNonNull(memberId, &quot;memberId must not be null&quot;);</span>
+<span class="fc" id="L24">        Objects.requireNonNull(reservedOn, &quot;reservedOn must not be null&quot;);</span>
+<span class="fc" id="L25">        Objects.requireNonNull(expiresOn, &quot;expiresOn must not be null&quot;);</span>
+<span class="fc" id="L26">        Objects.requireNonNull(status, &quot;status must not be null&quot;);</span>
+<span class="pc bpc" id="L27" title="1 of 2 branches missed.">        if (expiresOn.isBefore(reservedOn)) {</span>
+<span class="nc" id="L28">            throw new IllegalArgumentException(&quot;expiresOn must not be before reservedOn&quot;);</span>
+        }
+<span class="fc" id="L30">    }</span>
+
+    public static Reservation create(String id, String bookId, String memberId, LocalDate reservedOn) {
+<span class="fc" id="L33">        Objects.requireNonNull(reservedOn, &quot;reservedOn must not be null&quot;);</span>
+<span class="fc" id="L34">        return new Reservation(id, bookId, memberId, reservedOn, reservedOn.plusDays(EXPIRY_DAYS), ReservationStatus.ACTIVE);</span>
+    }
+
+    public boolean isExpiredOn(LocalDate date) {
+<span class="fc" id="L38">        Objects.requireNonNull(date, &quot;date must not be null&quot;);</span>
+<span class="pc bpc" id="L39" title="2 of 4 branches missed.">        return status == ReservationStatus.ACTIVE &amp;&amp; date.isAfter(expiresOn);</span>
+    }
+
+    public Reservation expire() {
+<span class="nc" id="L43">        return new Reservation(id, bookId, memberId, reservedOn, expiresOn, ReservationStatus.EXPIRED);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

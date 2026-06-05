@@ -1,0 +1,32 @@
+@startuml
+title SmartLib Builder Pattern
+
+class Loan
+class Member
+class Book
+class BorrowingPolicyRegistry
+class LoanBuilder {
+  +forMemberAndBook(member, book)
+  +notes(value)
+  +renewalCount(value)
+  +referenceCode(value)
+  +borrowedOn(value)
+  +loanId(value)
+  +build()
+}
+
+LoanBuilder --> Member : mandatory
+LoanBuilder --> Book : mandatory
+LoanBuilder --> BorrowingPolicyRegistry : uses
+LoanBuilder --> Loan : builds immutable
+
+note right of LoanBuilder
+Optional values:
+- notes
+- renewalCount
+- referenceCode
+- borrowedOn
+- loanId
+end note
+
+@enduml

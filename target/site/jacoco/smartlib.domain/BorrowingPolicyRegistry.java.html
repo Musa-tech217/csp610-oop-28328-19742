@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BorrowingPolicyRegistry.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">csp610-oop-smartlib</a> &gt; <a href="index.source.html" class="el_package">smartlib.domain</a> &gt; <span class="el_source">BorrowingPolicyRegistry.java</span></div><h1>BorrowingPolicyRegistry.java</h1><pre class="source lang-java linenums">package smartlib.domain;
+// Quick note: I kept the domain code straightforward so the rules are easy to follow.
+
+import java.util.Collection;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import smartlib.modern.MembershipPolicyFactory;
+
+/**
+ * Resolves the correct policy without hard-coding membership conditionals in services.
+ */
+public final class BorrowingPolicyRegistry {
+
+    private final Map&lt;MembershipType, BorrowingPolicy&gt; policies;
+
+<span class="fc" id="L18">    public BorrowingPolicyRegistry(Collection&lt;BorrowingPolicy&gt; policies) {</span>
+<span class="fc" id="L19">        Objects.requireNonNull(policies, &quot;policies must not be null&quot;);</span>
+<span class="fc" id="L20">        this.policies = policies.stream()</span>
+<span class="fc" id="L21">                .collect(Collectors.toUnmodifiableMap(BorrowingPolicy::membershipType, Function.identity()));</span>
+<span class="fc" id="L22">    }</span>
+
+    public BorrowingPolicy getPolicyFor(MembershipType membershipType) {
+<span class="fc" id="L25">        Objects.requireNonNull(membershipType, &quot;membershipType must not be null&quot;);</span>
+<span class="fc" id="L26">        BorrowingPolicy policy = policies.getOrDefault(</span>
+                membershipType,
+<span class="fc" id="L28">                MembershipPolicyFactory.defaultFactory().create(membershipType));</span>
+<span class="pc bpc" id="L29" title="1 of 2 branches missed.">        if (policy == null) {</span>
+<span class="nc" id="L30">            throw new IllegalArgumentException(&quot;No borrowing policy configured for &quot; + membershipType);</span>
+        }
+<span class="fc" id="L32">        return policy;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>

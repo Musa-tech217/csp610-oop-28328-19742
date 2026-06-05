@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>InventoryManager.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">csp610-oop-smartlib</a> &gt; <a href="index.source.html" class="el_package">smartlib.concurrent</a> &gt; <span class="el_source">InventoryManager.java</span></div><h1>InventoryManager.java</h1><pre class="source lang-java linenums">package smartlib.concurrent;
+// Quick note: I kept the shared state small here because that felt safer.
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+/**
+ * Thread-safe inventory manager using read/write locks and a condition for waiting borrowers.
+ */
+public final class InventoryManager {
+
+    private final Map&lt;String, Integer&gt; inventory;
+<span class="fc" id="L17">    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();</span>
+<span class="fc" id="L18">    private final Condition copiesAvailable = lock.writeLock().newCondition();</span>
+
+<span class="fc" id="L20">    public InventoryManager(Map&lt;String, Integer&gt; initialInventory) {</span>
+<span class="fc" id="L21">        Objects.requireNonNull(initialInventory, &quot;initialInventory must not be null&quot;);</span>
+<span class="fc" id="L22">        this.inventory = new HashMap&lt;&gt;(initialInventory);</span>
+<span class="fc" id="L23">    }</span>
+
+    public boolean borrow(String isbn, long timeoutMs) throws InterruptedException {
+<span class="fc" id="L26">        Objects.requireNonNull(isbn, &quot;isbn must not be null&quot;);</span>
+<span class="pc bpc" id="L27" title="1 of 2 branches missed.">        if (timeoutMs &lt; 0) {</span>
+<span class="nc" id="L28">            throw new IllegalArgumentException(&quot;timeoutMs must not be negative&quot;);</span>
+        }
+
+<span class="fc" id="L31">        long nanosRemaining = TimeUnit.MILLISECONDS.toNanos(timeoutMs);</span>
+<span class="fc" id="L32">        lock.writeLock().lockInterruptibly();</span>
+        try {
+<span class="fc bfc" id="L34" title="All 2 branches covered.">            while (inventory.getOrDefault(isbn, 0) &lt;= 0) {</span>
+<span class="fc bfc" id="L35" title="All 2 branches covered.">                if (nanosRemaining &lt;= 0L) {</span>
+<span class="fc" id="L36">                    return false;</span>
+                }
+<span class="fc" id="L38">                nanosRemaining = copiesAvailable.awaitNanos(nanosRemaining);</span>
+            }
+<span class="fc" id="L40">            inventory.put(isbn, inventory.get(isbn) - 1);</span>
+<span class="fc" id="L41">            return true;</span>
+        } finally {
+<span class="fc" id="L43">            lock.writeLock().unlock();</span>
+        }
+    }
+
+    public void returnCopy(String isbn) {
+<span class="fc" id="L48">        Objects.requireNonNull(isbn, &quot;isbn must not be null&quot;);</span>
+<span class="fc" id="L49">        lock.writeLock().lock();</span>
+        try {
+<span class="fc" id="L51">            inventory.merge(isbn, 1, Integer::sum);</span>
+<span class="fc" id="L52">            copiesAvailable.signalAll();</span>
+        } finally {
+<span class="fc" id="L54">            lock.writeLock().unlock();</span>
+        }
+<span class="fc" id="L56">    }</span>
+
+    public int availableCopies(String isbn) {
+<span class="fc" id="L59">        Objects.requireNonNull(isbn, &quot;isbn must not be null&quot;);</span>
+<span class="fc" id="L60">        lock.readLock().lock();</span>
+        try {
+<span class="fc" id="L62">            return inventory.getOrDefault(isbn, 0);</span>
+        } finally {
+<span class="fc" id="L64">            lock.readLock().unlock();</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.13.202504020838</span></div></body></html>
