@@ -1,3 +1,9 @@
+# CSP610-OOP
+## Developed By
+- Musa Alie Zain ID 28328
+- Zainab Sesay ID 19742
+
+
 # SmartLib
 
 SmartLib is a Java 17 Maven project built around a small library-management domain. It started as an object-oriented programming assignment and was extended step by step to cover core design ideas such as SOLID refactoring, GoF patterns, generics, streams, concurrency, and modern Java features.
